@@ -1,19 +1,23 @@
-name: Build pipeline (Runthepipeline → Excel)
+name: Build & publish data (Excel → CSV/JSON)
 
 on:
-  workflow_dispatch:    # correrlo a mano desde Actions
+  workflow_dispatch:
+    inputs:
+      tickers:
+        description: "Tickers separados por coma"
+        required: true
+        default: "KO,PEP,MNST,AAPL,MSFT"
   schedule:
-    - cron: "0 3 * * *"   # todos los días 03:00 UTC (00:00 aprox. ART)
+    - cron: "0 3 * * *"   # diario 03:00 UTC
 
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # para poder commitear los archivos generados
+      contents: write
 
     env:
-      # Cambiá la lista de tickers acá
-      TICKERS: "KO,PEP,MNST,AAPL,MSFT"
+      DEFAULT_TICKERS: "KO,PEP,MNST,AAPL,MSFT"
 
     steps:
       - name: Checkout
@@ -31,11 +35,15 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run pipeline
+        shell: bash
         run: |
-          python Runthepipeline.py --tickers "${{ env.TICKERS }}" --use-v2
+          T="${{ github.event.inputs.tickers }}"
+          if [ -z "$T" ]; then T="${DEFAULT_TICKERS}"; fi
+          echo "Tickers: $T"
+          python Runthepipeline.py --tickers "$T" --use-v2
 
-      # Guarda los Excel como artifact (descargables desde la pestaña del job)
-      - name: Upload artifacts
+      # Deja los Excel como artifact descargable
+      - name: Upload Excel artifacts
         uses: actions/upload-artifact@v4
         with:
           name: scorecards-excel
@@ -46,11 +54,37 @@ jobs:
             *_scorecard.xlsx
             Scorecards_*.xlsx
 
-      # (opcional) Commitea los resultados al repo
-      - name: Commit results to repo
+      # Convierte Excel → CSV/JSON para el frontend
+      - name: Excel → CSV/JSON (frontend/public/data)
+        run: |
+          python - <<'PY'
+          import pandas as pd
+          from pathlib import Path
+
+          out = Path('frontend/public/data')
+          out.mkdir(parents=True, exist_ok=True)
+
+          def dump(df, name):
+              (out / f'{name}.csv').unlink(missing_ok=True)
+              (out / f'{name}.json').unlink(missing_ok=True)
+              df.to_csv(out / f'{name}.csv', index=False)
+              df.to_json(out / f'{name}.json', orient='records')
+
+          x = Path('Scorecards_v2.xlsx')
+          xf = Path('Scorecards_v2_full.xlsx')
+          if x.exists():
+              dump(pd.read_excel(x, sheet_name='Scorecards'), 'Scorecards_v2')
+          if xf.exists():
+              dump(pd.read_excel(xf, sheet_name='Detalle'), 'Scorecards_v2_full')
+              dump(pd.read_excel(xf, sheet_name='Thresholds_sector'), 'Thresholds_sector')
+          print('CSV/JSON escritos en', out.resolve())
+          PY
+
+      # Commitea SOLO los CSV/JSON (esto disparará el deploy del front)
+      - name: Commit data for frontend
         run: |
           git config user.name "github-actions"
           git config user.email "actions@users.noreply.github.com"
-          git add *_full.xlsx *_key.xlsx *_ratios.xlsx *_scorecard.xlsx Scorecards_*.xlsx || true
-          git commit -m "data: update scorecards (tickers=${{ env.TICKERS }})" || echo "No changes to commit"
+          git add frontend/public/data/*.csv frontend/public/data/*.json || true
+          git commit -m "data: publish CSV/JSON (tickers=${{ github.event.inputs.tickers || env.DEFAULT_TICKERS }})" || echo "no changes"
           git push || true
