@@ -1,0 +1,2 @@
+ticker,company,sector,country,currency,price,shares,market_cap,WACC,ROIC_NOA,Spread_pp,F_Score,Altman_Z,DCF_Fair,DCF_Upside,DCF_EV,g5,g_terminal,NOPAT,NOA_now,NOA_prev,rf,mrp,tax_rate,beta_u,beta_l,ke,kd,wE,wD,Decision
+VIST,"Vista Energy, S.A.B. de C.V.",Energy,Mexico,USD,39.05,104333000,4074203650,0.2,,,,,,,,0.1,0.02,493551000,,,0.045,0.055,0.25,1.15,1.725,0.139875,0.065,,,AVOID
