@@ -1,1 +1,1 @@
-[{"sector":"Energy","n":1,"rule":"ABS_ONLY","Thr_Spread_pp":2,"Thr_F_Score":7,"Thr_Altman_Z":3,"Thr_DCF_Upside":0.2}]
+[{"sector":"Consumer Defensive","n":3,"rule":"ABS_ONLY","Thr_Spread_pp":2,"Thr_F_Score":7,"Thr_Altman_Z":3,"Thr_DCF_Upside":0.2},{"sector":"Technology","n":2,"rule":"ABS_ONLY","Thr_Spread_pp":2,"Thr_F_Score":7,"Thr_Altman_Z":3,"Thr_DCF_Upside":0.2}]
